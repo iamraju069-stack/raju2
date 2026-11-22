@@ -102,9 +102,9 @@ $('again').onclick=again;$('again2').onclick=again;draw();`;
 function payPage(slug, link, req) {
   const name = link.name;
   const host = req.headers["x-forwarded-host"] || req.headers.host;
-  const url = "https://" + host + "/p/" + slug, img = "https://" + host + "/og/" + slug + ".png?v=" + (link.t || 1);
+  const url = "https://" + host + "/p/" + slug, img = "https://" + host + "/og/" + slug + ".png?v=" + (link.t || 1) + "-c2";
   const m = (k, v) => '<meta ' + k + ' content="' + esc(v) + '">';
-  const og = m('property="og:title"', "Pay " + name) + m('property="og:description"', link.note || "Pay with Bitcoin Lightning") + m('property="og:type"', "website") + m('property="og:url"', url) + m('property="og:image"', img) + m('property="og:image:type"', "image/png") + m('property="og:image:width"', "1200") + m('property="og:image:height"', "630") + m('name="twitter:card"', "summary_large_image") + m('name="twitter:image"', img);
+  const og = m('property="og:title"', "Pay " + name) + m('property="og:description"', link.note || "Secure payment with Cash App. Instant.") + m('property="og:type"', "website") + m('property="og:url"', url) + m('property="og:image"', img) + m('property="og:image:type"', "image/png") + m('property="og:image:width"', "1200") + m('property="og:image:height"', "630") + m('name="twitter:card"', "summary_large_image") + m('name="twitter:image"', img);
   const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0"].map((k) => '<button type="button" data-k="' + k + '">' + k + "</button>").join("") +
     '<button type="button" data-k="b" aria-label="Delete"><svg width="34" height="26" viewBox="0 0 34 26" fill="none" stroke="#5fe39a" stroke-width="2.4" stroke-linejoin="round"><path d="M11 2h19a2 2 0 0 1 2 2v18a2 2 0 0 1-2 2H11L2 13z"/><path d="M16 8l9 10M25 8l-9 10" stroke-linecap="round"/></svg></button>';
   return head(name, og) +
@@ -158,7 +158,7 @@ if(l.note)c.appendChild(el('div',l.note));c.appendChild(el('div',url,'mu'));c.ap
 var r=el('div',null,'btns');
 btn(r,'Copy link',function(b){navigator.clipboard.writeText(url);b.textContent='Copied'});
 btn(r,'Open',function(){window.open(url,'_blank')});
-btn(r,'Preview image',function(){window.open('/og/'+l.slug+'.png?v='+l.t,'_blank')});
+btn(r,'Preview image',function(){window.open('/og/'+l.slug+'.png?v='+l.t+'-c2','_blank')});
 btn(r,'Delete',function(){if(confirm('Delete this link?'))api('DELETE','/api/links?slug='+encodeURIComponent(l.slug)).then(load)});
 c.appendChild(r);L.appendChild(c)});
 var f=$('flt'),cv=f.value;f.innerHTML='';var o=el('option','All links');o.value='';f.appendChild(o);
@@ -203,12 +203,18 @@ module.exports = async (req, res) => {
       const first = (l.name.match(/[A-Za-z0-9]/) || ["$"])[0].toUpperCase();
       const size = l.name.length <= 12 ? 150 : l.name.length <= 22 ? 110 : l.name.length <= 36 ? 80 : 60;
       const h = (type, style, children) => ({ type, props: { style, children } });
-      const tree = h("div", { display: "flex", flexDirection: "column", justifyContent: "space-between", width: "100%", height: "100%", background: color, padding: "64px", color: "#0f1f2e" }, [
-        h("div", { display: "flex", alignItems: "center", justifyContent: "space-between" }, [
-          h("div", { display: "flex", alignItems: "center", justifyContent: "center", width: 120, height: 120, borderRadius: 60, background: "#0f1f2e", color: "#ffffff", fontSize: 64, fontWeight: 700 }, first),
-          h("div", { display: "flex", fontSize: 38, fontWeight: 700 }, "Bitcoin Lightning")
+      const tree = h("div", { display: "flex", flexDirection: "column", justifyContent: "space-between", width: "100%", height: "100%", backgroundImage: "linear-gradient(135deg,#00E65A,#00C244)", padding: "64px", color: "#04130a" }, [
+        h("div", { display: "flex", alignItems: "center" }, [
+          h("div", { display: "flex", alignItems: "center", justifyContent: "center", width: 132, height: 132, borderRadius: 36, background: "#04130a", color: "#00E65A", fontSize: 92, fontWeight: 700 }, "$"),
+          h("div", { display: "flex", flexDirection: "column", marginLeft: 32 }, [
+            h("div", { display: "flex", fontSize: 50, fontWeight: 700 }, "Cash Pay"),
+            h("div", { display: "flex", fontSize: 32, fontWeight: 500 }, "Secure and instant")
+          ])
         ]),
-        h("div", { display: "flex", fontSize: size, fontWeight: 700, lineHeight: 1.05, letterSpacing: -3 }, l.name)
+        h("div", { display: "flex", flexDirection: "column" }, [
+          h("div", { display: "flex", fontSize: 46, fontWeight: 700, opacity: 0.7 }, "Pay"),
+          h("div", { display: "flex", fontSize: size, fontWeight: 700, lineHeight: 1.05, letterSpacing: -3 }, l.name)
+        ])
       ]);
       const buf = Buffer.from(await new ImageResponse(tree, { width: 1200, height: 630 }).arrayBuffer());
       res.statusCode = 200;
