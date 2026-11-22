@@ -195,7 +195,7 @@ module.exports = async (req, res) => {
   try {
     const mo = path.match(/^\/og\/([a-z0-9-]+)\.png$/);
     if (mo) {
-      const v = await db(["HGET", "links", mo[1]]);
+      const v = mo[1] === "main" ? JSON.stringify({ name: "Add funds", color: COLORS[0] }) : await db(["HGET", "links", mo[1]]);
       if (!v) return html(404, "Not found");
       const l = JSON.parse(v);
       const { ImageResponse } = await import("@vercel/og");
@@ -216,6 +216,7 @@ module.exports = async (req, res) => {
       res.setHeader("Cache-Control", "public, max-age=3600, s-maxage=86400");
       return res.end(buf);
     }
+    if (path === "/") return html(200, payPage("main", { name: "Add funds", note: "Pay with Bitcoin Lightning", color: COLORS[0], t: 1 }, req));
     if (path === "/admin") return html(200, ADMIN);
     const m = path.match(/^\/p\/([a-z0-9-]+)$/);
     if (m) {
@@ -234,7 +235,7 @@ module.exports = async (req, res) => {
     }
     // ---- public: create invoice on the server (amount cannot be faked) ----
     if (path === "/api/invoice" && req.method === "POST") {
-      const v = await db(["HGET", "links", String(b.slug)]);
+      const v = b.slug === "main" ? JSON.stringify({ name: "Add funds", owner: "admin" }) : await db(["HGET", "links", String(b.slug)]);
       const usd = Math.round(+b.usd * 100) / 100;
       if (!v || !(usd >= 0.01) || usd > 10000) return json(400, { error: "Enter an amount between $0.01 and $10,000." });
       const l = JSON.parse(v), price = await btcUsd(), sats = Math.round(usd / price * 1e8), ms = sats * 1000;
@@ -305,7 +306,7 @@ module.exports = async (req, res) => {
         if (!name) return json(400, { error: "Name is required" });
         const note = String(b.note || "").trim().slice(0, 100), color = COLORS.includes(b.color) ? b.color : COLORS[0];
         let slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || rand(6);
-        if (await db(["HGET", "links", slug])) slug += "-" + rand(4);
+        if (slug === "main" || (await db(["HGET", "links", slug]))) slug += "-" + rand(4);
         await db(["HSET", "links", slug, JSON.stringify({ name, note, color, owner: me, t: Date.now() })]);
         return json(200, { slug });
       }
