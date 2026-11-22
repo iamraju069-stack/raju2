@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Add funds with Bitcoin Lightning</title>
+<style>
+  :root {
+    --bg: #eaf1f4; --ink: #0f1f2e; --muted: #55697a; --line: #c3d3dc;
+    --field: #ffffff; --accent: #ffb300; --accent-ink: #1a1200;
+    --error: #b3261e; --ok: #1e8e5a;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0c1721; --ink: #e6eef3; --muted: #93a8b7; --line: #25394a;
+      --field: #12222f; --error: #ff8a80; --ok: #5fd39a;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+    line-height: 1.5; min-height: 100vh;
+    display: flex; justify-content: center; padding: 28px 18px 48px;
+  }
+  main { width: 100%; max-width: 440px; }
+  h1 { font-size: 1.6rem; line-height: 1.2; margin: 0 0 6px; letter-spacing: -0.01em; }
+  h2 { font-size: 1.1rem; margin: 26px 0 8px; }
+  .sub { color: var(--muted); margin: 0 0 28px; }
+  label { display: block; font-weight: 600; margin-bottom: 8px; }
+  .amount {
+    display: flex; align-items: center; background: var(--field);
+    border: 2px solid var(--line); border-radius: 14px; padding: 4px 16px;
+  }
+  .amount:focus-within { border-color: var(--ink); }
+  .amount span { font-size: 2rem; font-weight: 700; color: var(--muted); }
+  .amount input {
+    flex: 1; min-width: 0; border: 0; outline: 0; background: transparent;
+    color: var(--ink); font: inherit; font-size: 2rem; font-weight: 700; padding: 10px 8px;
+  }
+  .chips { display: flex; gap: 8px; margin: 12px 0 20px; flex-wrap: wrap; }
+  .chip {
+    border: 1.5px solid var(--line); background: transparent; color: var(--ink);
+    font: inherit; font-weight: 600; padding: 8px 16px; border-radius: 999px; cursor: pointer;
+  }
+  .chip:hover { border-color: var(--ink); }
+  .primary {
+    display: block; width: 100%; text-align: center; text-decoration: none;
+    border: 0; background: var(--accent); color: var(--accent-ink);
+    font: inherit; font-size: 1.05rem; font-weight: 700;
+    padding: 15px; border-radius: 14px; cursor: pointer;
+  }
+  .primary:disabled { opacity: 0.6; cursor: wait; }
+  .secondary {
+    display: block; width: 100%; text-align: center;
+    border: 2px solid var(--ink); background: transparent; color: var(--ink);
+    font: inherit; font-weight: 700; padding: 13px; border-radius: 14px;
+    cursor: pointer; margin-top: 10px;
+  }
+  .link {
+    background: none; border: 0; color: var(--muted); font: inherit;
+    text-decoration: underline; cursor: pointer; padding: 8px 0; margin-top: 8px;
+  }
+  button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible {
+    outline: 3px solid var(--accent); outline-offset: 2px;
+  }
+  .error { color: var(--error); margin: 14px 0 0; font-weight: 600; }
+  .qr-wrap { background: #fff; padding: 14px; border-radius: 14px; width: max-content; max-width: 100%; margin: 0 auto 16px; }
+  #qr img, #qr canvas { display: block; max-width: 100%; height: auto; }
+  .facts { text-align: center; margin: 0 0 18px; }
+  .facts strong { font-size: 1.35rem; }
+  .facts small { display: block; color: var(--muted); }
+  .invoice {
+    width: 100%; background: var(--field); color: var(--ink);
+    border: 1.5px solid var(--line); border-radius: 12px; padding: 12px;
+    font: 0.8rem/1.4 ui-monospace, Menlo, Consolas, monospace;
+    word-break: break-all; resize: none; height: 84px; margin-top: 10px;
+  }
+  ol.steps { padding-left: 1.3rem; margin: 0; }
+  ol.steps li { margin-bottom: 8px; }
+  .status {
+    display: flex; align-items: center; gap: 10px; justify-content: center;
+    margin: 22px 0 0; color: var(--muted); font-weight: 600;
+  }
+  .spinner {
+    width: 16px; height: 16px; border-radius: 50%;
+    border: 3px solid var(--line); border-top-color: var(--ink);
+    animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+  .done { text-align: center; padding-top: 24px; }
+  .done svg { width: 84px; height: 84px; }
+  .done h1 { color: var(--ok); margin-top: 14px; }
+  .note { color: var(--muted); font-size: 0.9rem; margin-top: 16px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+
+  <!-- STEP 1: amount -->
+  <section id="stepAmount">
+    <h1 id="heading"></h1>
+    <p class="sub" id="intro"></p>
+    <label for="usd">Amount (USD)</label>
+    <div class="amount">
+      <span>$</span>
+      <input id="usd" type="text" inputmode="decimal" placeholder="10.00" autocomplete="off">
+    </div>
+    <div class="chips" id="chips">
+      <button class="chip" type="button" data-v="5">$5</button>
+      <button class="chip" type="button" data-v="10">$10</button>
+      <button class="chip" type="button" data-v="25">$25</button>
+      <button class="chip" type="button" data-v="50">$50</button>
+      <button class="chip" type="button" data-v="100">$100</button>
+    </div>
+    <button class="primary" id="go" type="button">Create invoice</button>
+    <p class="error" id="err" role="alert" hidden></p>
+  </section>
+
+  <!-- STEP 2: pay -->
+  <section id="stepPay" hidden>
+    <h1>Send your payment</h1>
+    <p class="facts"><strong id="satsOut"></strong><small id="rateOut"></small></p>
+
+    <button class="primary" id="openCash" type="button">Open Cash App</button>
+    <button class="secondary" id="copy" type="button">Copy invoice</button>
+    <p class="note" id="openHint">The invoice is copied automatically when you tap Open Cash App.</p>
+
+    <h2>How to pay from Cash App</h2>
+    <ol class="steps">
+      <li>Tap <strong>Open Cash App</strong> above. The invoice is copied for you.</li>
+      <li>In Cash App, open the <strong>Bitcoin</strong> section and tap <strong>Send</strong>.</li>
+      <li>Paste the invoice (or scan the QR code below). Cash App fills in the amount.</li>
+      <li>Check the amount and confirm the payment.</li>
+      <li>Come back to this page. It shows <strong>Payment complete</strong> when your payment arrives.</li>
+    </ol>
+    <p class="note">Menu names can differ slightly between Cash App versions. Other Lightning wallets work too: paste the invoice or scan the QR code.</p>
+
+    <h2>QR code and invoice</h2>
+    <div class="qr-wrap"><div id="qr"></div></div>
+    <textarea class="invoice" id="inv" readonly aria-label="Lightning invoice"></textarea>
+
+    <div class="status" id="statusBox" aria-live="polite">
+      <span class="spinner" id="spin"></span><span id="statusText">Waiting for your payment...</span>
+    </div>
+    <button class="secondary" id="sentBtn" type="button" hidden>I have sent the payment</button>
+    <div style="text-align:center"><button class="link" id="restart" type="button">Start over with a new amount</button></div>
+  </section>
+
+  <!-- STEP 3: done -->
+  <section id="stepDone" class="done" hidden>
+    <svg viewBox="0 0 84 84" aria-hidden="true">
+      <circle cx="42" cy="42" r="38" fill="none" stroke="var(--ok)" stroke-width="5"/>
+      <path d="M25 43l12 12 23-26" fill="none" stroke="var(--ok)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <h1 id="doneTitle">Payment complete</h1>
+    <p class="sub" id="doneText"></p>
+    <button class="secondary" id="again" type="button">Make another payment</button>
+  </section>
+
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+  // ===== Edit these values =====
+  var HEADING = "Add funds with Bitcoin Lightning";
+  var INTRO   = "Enter an amount in US dollars, then pay the invoice from Cash App or any Lightning wallet.";
+  var LN_USER = "iamraju069";     // Lightning Address: user@domain
+  var LN_DOMAIN = "blink.sv";
+  // =============================
+
+  var $ = function (id) { return document.getElementById(id); };
+  document.getElementById("heading").textContent = HEADING;
+  document.getElementById("intro").textContent = INTRO;
+
+  var usdEl = $("usd"), goBtn = $("go"), errEl = $("err");
+  var pollTimer = null, currentInvoice = "", currentUsd = 0, currentSats = 0;
+
+  function show(step) {
+    ["stepAmount", "stepPay", "stepDone"].forEach(function (id) { $(id).hidden = (id !== step); });
+    window.scrollTo(0, 0);
+  }
+  function showError(msg) { errEl.textContent = msg; errEl.hidden = false; }
+  function clearError() { errEl.hidden = true; errEl.textContent = ""; }
+
+  $("chips").addEventListener("click", function (e) {
+    var v = e.target && e.target.getAttribute("data-v");
+    if (v) { usdEl.value = Number(v).toFixed(2); clearError(); }
+  });
+
+  async function getJson(url) {
+    var r = await fetch(url);
+    if (!r.ok) throw new Error("Request failed (" + r.status + ")");
+    return r.json();
+  }
+
+  async function getBtcUsd() {
+    try {
+      var j = await getJson("https://mempool.space/api/v1/prices");
+      if (j && j.USD) return Number(j.USD);
+    } catch (e) {}
+    var c = await getJson("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd");
+    return Number(c.bitcoin.usd);
+  }
+
+  function stopPolling() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+
+  function startPolling(verifyUrl) {
+    stopPolling();
+    var started = Date.now();
+    var failures = 0;
+    pollTimer = setInterval(async function () {
+      if (Date.now() - started > 20 * 60 * 1000) {
+        stopPolling();
+        $("spin").hidden = true;
+        $("statusText").textContent = "This invoice may have expired. Start over to create a new one.";
+        return;
+      }
+      try {
+        var r = await fetch(verifyUrl);
+        var j = await r.json();
+        failures = 0;
+        if (j && j.settled === true) { stopPolling(); showDone(); }
+      } catch (e) {
+        failures++;
+        if (failures >= 5) {
+          stopPolling();
+          $("spin").hidden = true;
+          $("statusText").textContent = "Could not check the payment status automatically.";
+          $("sentBtn").hidden = false;
+        }
+      }
+    }, 3000);
+  }
+
+  function showDone() {
+    $("doneText").textContent = "We received $" + currentUsd.toFixed(2) + " (" + currentSats.toLocaleString() + " sats). Thank you.";
+    show("stepDone");
+  }
+
+  async function createInvoice() {
+    clearError();
+    var usd = parseFloat(String(usdEl.value).replace(",", "."));
+    if (!isFinite(usd) || usd <= 0) { showError("Enter an amount greater than 0."); return; }
+
+    goBtn.disabled = true;
+    goBtn.textContent = "Creating invoice...";
+    try {
+      var results = await Promise.all([
+        getJson("https://" + LN_DOMAIN + "/.well-known/lnurlp/" + LN_USER),
+        getBtcUsd()
+      ]);
+      var meta = results[0], price = results[1];
+      if (!meta.callback) throw new Error("This Lightning Address did not respond correctly.");
+
+      var sats = Math.round((usd / price) * 1e8);
+      var msats = sats * 1000;
+      if (sats < 1) throw new Error("Amount is too small.");
+      if (meta.minSendable && msats < meta.minSendable) {
+        throw new Error("Minimum is " + Math.ceil(meta.minSendable / 1000) + " sats. Enter a larger amount.");
+      }
+      if (meta.maxSendable && msats > meta.maxSendable) {
+        throw new Error("Maximum is " + Math.floor(meta.maxSendable / 1000).toLocaleString() + " sats. Enter a smaller amount.");
+      }
+
+      var sep = meta.callback.indexOf("?") === -1 ? "?" : "&";
+      var inv = await getJson(meta.callback + sep + "amount=" + msats);
+      if (!inv.pr) throw new Error(inv.reason || "Could not create the invoice. Try again.");
+
+      currentInvoice = inv.pr; currentUsd = usd; currentSats = sats;
+      $("inv").value = inv.pr;
+      $("satsOut").textContent = sats.toLocaleString() + " sats";
+      $("rateOut").textContent = "$" + usd.toFixed(2) + " at 1 BTC = $" + Math.round(price).toLocaleString();
+
+      var qrBox = $("qr");
+      qrBox.innerHTML = "";
+      if (window.QRCode) {
+        new QRCode(qrBox, { text: "LIGHTNING:" + inv.pr.toUpperCase(), width: 240, height: 240, correctLevel: QRCode.CorrectLevel.L });
+      } else {
+        qrBox.textContent = "QR code could not load. Copy the invoice instead.";
+      }
+
+      // Payment status
+      $("spin").hidden = false;
+      $("sentBtn").hidden = true;
+      if (inv.verify) {
+        $("statusText").textContent = "Waiting for your payment...";
+        startPolling(inv.verify);
+      } else {
+        stopPolling();
+        $("spin").hidden = true;
+        $("statusText").textContent = "Pay the invoice, then tap the button below.";
+        $("sentBtn").hidden = false;
+      }
+      show("stepPay");
+    } catch (e) {
+      showError(e.message || "Something went wrong. Try again.");
+    } finally {
+      goBtn.disabled = false;
+      goBtn.textContent = "Create invoice";
+    }
+  }
+
+  async function copyInvoice() {
+    try { await navigator.clipboard.writeText(currentInvoice); }
+    catch (e) { var ta = $("inv"); ta.select(); document.execCommand("copy"); }
+  }
+
+  goBtn.addEventListener("click", createInvoice);
+  usdEl.addEventListener("keydown", function (e) { if (e.key === "Enter") createInvoice(); });
+
+  $("copy").addEventListener("click", async function () {
+    var btn = this;
+    await copyInvoice();
+    btn.textContent = "Copied";
+    setTimeout(function () { btn.textContent = "Copy invoice"; }, 1800);
+  });
+
+  $("openCash").addEventListener("click", async function () {
+    await copyInvoice();
+    $("openHint").textContent = "Invoice copied. Opening Cash App...";
+    window.location.href = "cashme://";
+    setTimeout(function () {
+      if (!document.hidden) { window.location.href = "https://cash.app"; }
+    }, 1500);
+  });
+
+  $("sentBtn").addEventListener("click", function () {
+    $("statusText").textContent = "Thank you. Your payment will be confirmed once it arrives.";
+    $("spin").hidden = true;
+    this.hidden = true;
+  });
+
+  function reset() {
+    stopPolling();
+    usdEl.value = "";
+    clearError();
+    show("stepAmount");
+  }
+  $("restart").addEventListener("click", reset);
+  $("again").addEventListener("click", reset);
+</script>
+</body>
+</html>
