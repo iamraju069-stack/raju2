@@ -216,7 +216,7 @@ module.exports = async (req, res) => {
       res.setHeader("Cache-Control", "public, max-age=3600, s-maxage=86400");
       return res.end(buf);
     }
-    if (path === "/") return html(200, payPage("main", { name: "Add funds", note: "Pay with Bitcoin Lightning", color: COLORS[0], t: 1 }, req));
+    if (path === "/" || path === "/pay") return html(200, payPage("main", { name: "Add funds", note: "Pay with Bitcoin Lightning", color: COLORS[0], t: 1 }, req));
     if (path === "/admin") return html(200, ADMIN);
     const m = path.match(/^\/p\/([a-z0-9-]+)$/);
     if (m) {
