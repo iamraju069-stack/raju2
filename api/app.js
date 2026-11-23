@@ -200,7 +200,7 @@ if(!rows.length){var r0=el('tr'),c0=el('td','No invoices yet.','mu');c0.colSpan=
 rows.forEach(function(x){var r=el('tr'),s=stt(x);r.appendChild(el('td',new Date(x.t).toLocaleString()));
 if(a)r.appendChild(el('td',x.owner==='admin'?'Main':x.owner));
 r.appendChild(el('td',x.name));r.appendChild(icell(x));r.appendChild(el('td','$'+x.usd.toFixed(2)));var c=el('td');c.appendChild(el('span',s,'b '+s));r.appendChild(c);H.appendChild(r)})}
-function sid(x){var p=x.pr||x.id||'';return p.length>16?p.slice(0,8)+'...'+p.slice(-6):p}
+function sid(x){return x.ref||x.id||''}
 function icell(x){var c=el('td'),full=el('div',x.pr||x.id,'pw');full.hidden=true;full.style.cssText='max-width:260px;overflow-wrap:anywhere;margin-top:6px;font-size:.75rem';
 c.appendChild(el('span',sid(x),'pw'));
 if(x.pr){var tg=btn(c,'Full',function(){full.hidden=!full.hidden;tg.textContent=full.hidden?'Full':'Hide'});tg.style.marginLeft='8px';
@@ -345,7 +345,7 @@ module.exports = async (req, res) => {
       for (let i = 0; i < fb.length; i += 2) bal[fb[i]] = +fb[i + 1];
       const users = [];
       if (admin) { const fu = (await db(["HGETALL", "users"])) || []; for (let i = 0; i < fu.length; i += 2) { const o = JSON.parse(fu[i + 1]); users.push({ u: fu[i], fee: o.fee, pw: o.pw || "" }); } }
-      inv.forEach((x) => { delete x.pr; delete x.verify; });
+      inv.forEach((x, n) => { x.ref = x.pr ? x.pr.slice(0, 8) + "..." + x.pr.slice(-6) : ""; delete x.verify; if (n >= 60) delete x.pr; });
       return json(200, { me: { role: admin ? "admin" : "user", u: me, pw: admin ? PW : (urec && urec.pw) || "" }, bal: admin ? bal : { [me]: bal[me] || 0 }, users, links, inv });
     }
     if (path === "/api/users" && req.method === "POST") {
