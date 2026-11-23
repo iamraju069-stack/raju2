@@ -193,13 +193,14 @@ D.links.forEach(function(l){var o2=el('option',l.name+(a&&l.owner&&l.owner!=='ad
 var fu=$('fuf'),cu=fu.value;fu.innerHTML='';fu.hidden=!a;
 if(a){var o3=el('option','All users');o3.value='';fu.appendChild(o3);var o4=el('option','Main (admin)');o4.value='admin';fu.appendChild(o4);D.users.forEach(function(u){var o5=el('option',u.u);o5.value=u.u;fu.appendChild(o5)});fu.value=cu}
 var IH=$('ih');IH.innerHTML='';var hr=el('tr');
-(a?['Time','User','Link','USD','Status']:['Time','Link','USD','Status']).forEach(function(t){hr.appendChild(el('th',t))});IH.appendChild(hr);
+(a?['Time','User','Link','Invoice ID','USD','Status']:['Time','Link','Invoice ID','USD','Status']).forEach(function(t){hr.appendChild(el('th',t))});IH.appendChild(hr);
 var H=$('hist');H.innerHTML='';var v=f.value,uv=a?fu.value:'';
 var rows=D.inv.filter(function(x){return(!v||x.slug===v)&&(!uv||x.owner===uv)});
-if(!rows.length){var r0=el('tr'),c0=el('td','No invoices yet.','mu');c0.colSpan=a?5:4;r0.appendChild(c0);H.appendChild(r0)}
+if(!rows.length){var r0=el('tr'),c0=el('td','No invoices yet.','mu');c0.colSpan=a?6:5;r0.appendChild(c0);H.appendChild(r0)}
 rows.forEach(function(x){var r=el('tr'),s=stt(x);r.appendChild(el('td',new Date(x.t).toLocaleString()));
 if(a)r.appendChild(el('td',x.owner==='admin'?'Main':x.owner));
-r.appendChild(el('td',x.name));r.appendChild(el('td','$'+x.usd.toFixed(2)));var c=el('td');c.appendChild(el('span',s,'b '+s));r.appendChild(c);H.appendChild(r)})}
+r.appendChild(el('td',x.name));r.appendChild(el('td',sid(x),'pw'));r.appendChild(el('td','$'+x.usd.toFixed(2)));var c=el('td');c.appendChild(el('span',s,'b '+s));r.appendChild(c);H.appendChild(r)})}
+function sid(x){var p=x.pr||x.id||'';return p.length>16?p.slice(0,8)+'...'+p.slice(-6):p}
 function ren(){if(D)render()}
 var sw=$('sw');
 COLORS.forEach(function(c,i){var b=el('button');b.type='button';b.className='swb'+(i==0?' on':'');b.style.background=c;b.setAttribute('aria-label','Color '+(i+1));b.onclick=function(){sel=i;[].forEach.call(sw.children,function(x,j){x.className='swb'+(j==i?' on':'')})};sw.appendChild(b)});
