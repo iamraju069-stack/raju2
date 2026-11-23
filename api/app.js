@@ -263,7 +263,7 @@ var r=el('div',null,'btns');
 btn(r,'Copy link',function(b){navigator.clipboard.writeText(url);b.textContent='Copied'});
 btn(r,'Open',function(){window.open(url,'_blank')});
 btn(r,'Preview image',function(){window.open('/og/'+l.slug+'.png?v='+l.t+'-c2','_blank')});
-btn(r,'Delete',function(){if(confirm('Delete this link?'))api('DELETE','/api/links?slug='+encodeURIComponent(l.slug)).then(load)});
+btn(r,'Delete',function(){if(confirm('Remove this link from the dashboard? Anyone who saved the link can still use it to pay.'))api('DELETE','/api/links?slug='+encodeURIComponent(l.slug)).then(load)});
 c.appendChild(r);L.appendChild(c)});
 /* ---- invoices ---- */
 var f=$('flt'),cv=f.value;f.innerHTML='';var o=el('option','All links');o.value='';f.appendChild(o);
@@ -422,7 +422,7 @@ module.exports = async (req, res) => {
       const nowT = Date.now(), pen = inv.filter((x) => x.st === "pending");
       await Promise.all([...pen.filter((x) => nowT <= x.exp).slice(0, 10), ...pen.filter((x) => nowT > x.exp).slice(0, 25)].map(checkOne));
       const fl = (await db(["HGETALL", "links"])) || [], links = [];
-      for (let i = 0; i < fl.length; i += 2) { const l = Object.assign({ slug: fl[i] }, JSON.parse(fl[i + 1])); if (admin || l.owner === me) links.push(l); }
+      for (let i = 0; i < fl.length; i += 2) { const l = Object.assign({ slug: fl[i] }, JSON.parse(fl[i + 1])); if (!l.deleted && (admin || l.owner === me)) links.push(l); }
       links.sort((a, c) => c.t - a.t);
       const fb = (await db(["HGETALL", "bal"])) || [], bal = {};
       for (let i = 0; i < fb.length; i += 2) bal[fb[i]] = +fb[i + 1];
@@ -456,7 +456,7 @@ module.exports = async (req, res) => {
       const u = String(b.u || "");
       await db(["HDEL", "users", u]); await db(["HDEL", "bal", u]);
       const fl = (await db(["HGETALL", "links"])) || [];
-      for (let i = 0; i < fl.length; i += 2) if (JSON.parse(fl[i + 1]).owner === u) await db(["HDEL", "links", fl[i]]);
+      for (let i = 0; i < fl.length; i += 2) { const lo = JSON.parse(fl[i + 1]); if (lo.owner === u && !lo.deleted) await db(["HSET", "links", fl[i], JSON.stringify(Object.assign(lo, { deleted: true, dt: Date.now() }))]); }
       return json(200, { ok: 1 });
     }
     if (path === "/api/links") {
@@ -471,7 +471,7 @@ module.exports = async (req, res) => {
       }
       if (req.method === "DELETE") {
         const s = String(q.slug || ""), v = await db(["HGET", "links", s]);
-        if (v && (admin || JSON.parse(v).owner === me)) await db(["HDEL", "links", s]);
+        if (v && (admin || JSON.parse(v).owner === me)) await db(["HSET", "links", s, JSON.stringify(Object.assign(JSON.parse(v), { deleted: true, dt: Date.now() }))]); // hidden from dashboard, saved link keeps working
         return json(200, { ok: 1 });
       }
     }
