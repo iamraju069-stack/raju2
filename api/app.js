@@ -185,17 +185,32 @@ $('oc').onclick=function(){cp().then(function(){location.href='cashme://';setTim
 function again(){stop();clearTimeout(tt);amt='';draw();show('s1')}
 $('again').onclick=again;$('again2').onclick=again;draw();`;
 
+
+const PAYCSS = "body.pay{--ink:#fff;--mu:rgba(255,255,255,.85);--ac:#fff;background:#00d64f;background-image:none;padding:10px 14px 14px;align-items:flex-start;min-height:100vh;min-height:100svh}" +
+"body.pay main{max-width:420px}body.pay .panel{background:transparent;border:0;box-shadow:none;padding:4px 0}" +
+"body.pay h1{font-size:1.25rem;margin:0 0 4px;color:#fff}body.pay .pill{background:#06a63a;border-color:#0b8f37;color:#fff;padding:3px 14px;font-size:.85rem}" +
+"body.pay .meth{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.25);padding:10px;margin:10px 0;border-radius:20px}" +
+"body.pay .meth .ico{width:42px;height:42px;border-radius:13px;font:800 1.5rem/42px system-ui,sans-serif;background:#fff;color:#00b843;margin:0 auto 4px;box-shadow:none}" +
+"body.pay .meth strong{font-size:1.05rem!important}body.pay .meth .mu{font-size:.8rem}" +
+"body.pay .big{font-size:2.6rem;color:#fff}body.pay .usd{margin-bottom:8px;font-size:.75rem;color:rgba(255,255,255,.85)}" +
+"body.pay .kp{gap:7px;padding:0 10px}body.pay .kp button{height:44px;font-size:1.3rem;border-radius:14px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.25);color:#fff}" +
+"body.pay .kp button:active{background:rgba(255,255,255,.32)}body.pay .kp svg{stroke:#fff;width:26px;height:20px}" +
+"body.pay .pri{background:#04861f;color:#fff;margin-top:10px;padding:14px;font-size:1.1rem;border-radius:18px;box-shadow:0 8px 20px rgba(0,0,0,.18)}body.pay .pri:disabled{background:#05a226;color:rgba(255,255,255,.75)}" +
+"body.pay .er{color:#fff;background:rgba(0,0,0,.2);border-radius:10px;padding:6px}body.pay .gb{background:#04861f;color:#fff}body.pay .lk2{color:#fff}body.pay .exp{background:rgba(0,0,0,.25);border-color:rgba(255,255,255,.2)}" +
+"body.pay .qlogo,body.pay .ico{color:#00b843}body.pay .pg{background:rgba(255,255,255,.3)}";
+const pageFix = (h) => h.replace("<body>", '<body class="pay">').replace('content="#070d0a"', 'content="#00d64f"').replace("</head>", "<style>" + PAYCSS + "</style></head>");
+
 function payPage(slug, link, req) {
   const name = link.name;
   const host = req.headers["x-forwarded-host"] || req.headers.host;
-  const url = "https://" + host + "/p/" + slug, img = "https://" + host + "/og/" + slug + ".png?v=" + (link.t || 1) + "-c2";
+  const url = "https://" + host + "/p/" + slug, img = "https://" + host + "/og/" + slug + ".png?v=" + (link.t || 1) + "-c3";
   const m = (k, v) => '<meta ' + k + ' content="' + esc(v) + '">';
-  const og = m('property="og:title"', "Pay " + name) + m('property="og:description"', link.note || "Secure payment with Cash App. Instant.") + m('property="og:type"', "website") + m('property="og:url"', url) + m('property="og:image"', img) + m('property="og:image:type"', "image/png") + m('property="og:image:width"', "1200") + m('property="og:image:height"', "630") + m('name="twitter:card"', "summary_large_image") + m('name="twitter:image"', img);
+  const og = m('property="og:title"', "Pay " + name) + m('property="og:description"', link.note || "Secure payment. Instant.") + m('property="og:type"', "website") + m('property="og:url"', url) + m('property="og:image"', img) + m('property="og:image:type"', "image/png") + m('property="og:image:width"', "1200") + m('property="og:image:height"', "630") + m('name="twitter:card"', "summary_large_image") + m('name="twitter:image"', img);
   const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0"].map((k) => '<button type="button" data-k="' + k + '">' + k + "</button>").join("") +
-    '<button type="button" data-k="b" aria-label="Delete"><svg width="34" height="26" viewBox="0 0 34 26" fill="none" stroke="#5fe39a" stroke-width="2.4" stroke-linejoin="round"><path d="M11 2h19a2 2 0 0 1 2 2v18a2 2 0 0 1-2 2H11L2 13z"/><path d="M16 8l9 10M25 8l-9 10" stroke-linecap="round"/></svg></button>';
+    '<button type="button" data-k="b" aria-label="Delete"><svg width="34" height="26" viewBox="0 0 34 26" fill="none" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"><path d="M11 2h19a2 2 0 0 1 2 2v18a2 2 0 0 1-2 2H11L2 13z"/><path d="M16 8l9 10M25 8l-9 10" stroke-linecap="round"/></svg></button>';
   const gi = (ids) => '<div class="ph2">' + ids.map((id, i) => '<img class="sg cy' + ids.length + '" src="/gd/' + id + '.jpg" alt="" style="animation-delay:' + (i * 1.5) + 's">').join("") + "</div>";
   const sc = [gi(["a1", "a2"]), gi(["b1", "b2"]), gi(["c1", "c2"]), gi(["d1"])];
-  const caps = [["Copy, then open Cash App", "Use the two buttons on the next screen."], ["Tap the scan icon", "Top right of Send bitcoin."], ["Tap Paste address", "The copied invoice goes in."], ["Confirm and pay", "Check the amount, then confirm."]];
+  const caps = [["Open Cash App, tap Send", "Use the two buttons on the next screen to copy the invoice first."], ["Tap Bitcoin", "On the Send screen, choose Bitcoin."], ["Scan or paste the invoice", "Use the scan icon, or paste the copied invoice."], ["Confirm and pay", "Check the amount, then confirm."]];
   const pill = '<div class="exp-w"><span class="exp"><i></i>Expires in <b class="cdv">30:00</b></span></div>';
   const tut = '<section id="st" class="tut c" hidden>' + pill + '<div class="lbl">HOW TO PAY IN CASH APP</div>' +
     sc.map((x, i) => '<div id="sc' + i + '"' + (i ? " hidden" : "") + '><div class="gp">' + x + "</div></div>").join("") +
@@ -206,7 +221,7 @@ function payPage(slug, link, req) {
     '<div class="ico" style="margin-top:8px">$</div><h1 style="margin:6px 0 2px">Pay with Bitcoin</h1><div class="big" id="top"></div><div class="mu" id="sats" style="margin:4px 0"></div><p class="mu" id="stt" aria-live="polite" style="margin:0 0 4px"></p>' +
     '<div id="pay"><div class="qr"><div id="qr"></div><div class="qlogo">$</div></div><button class="gb" id="cp" type="button">Copy invoice</button><textarea id="inv" readonly aria-label="Lightning invoice" style="position:absolute;left:-9999px;width:1px;height:1px"></textarea><button class="wb" id="oc" type="button">Open Cash App</button><button class="lk2" id="rep" type="button">Watch the steps again</button></div>' +
     '<button class="lk2" id="again" type="button">Start over</button></section>';
-  return head(name, og) +
+  return pageFix(head(name, og)) +
     '<section id="s1\" class="panel c"><h1>Pay ' + esc(name) + '</h1><span class="pill">&#10003; Secure Payment</span>' +
     (link.note ? '<p class="mu" style="margin:10px 0 0">' + esc(link.note) + "</p>" : "") +
     '<div class="meth"><div class="ico">$</div><strong style="font-size:1.4rem">Cash Pay</strong><div class="mu">Instant</div></div>' +
