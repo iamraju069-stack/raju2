@@ -115,6 +115,8 @@ const head = (t, extra) => '<!DOCTYPE html><html lang="en"><head><meta charset="
 const tail = (s) => "</main>" + s + "</body></html>";
 
 const hash = (p, s) => crypto.scryptSync(p, s, 32).toString("hex");
+async function adminRec() { const x = await db(["HGET", "stats", "adminauth"]); return x ? JSON.parse(x) : null; }
+async function adminOk(p) { const am = await adminRec(); return (!!PW && eq(p, PW)) || (!!am && eq(hash(p, am.salt), am.hash)); }
 const eq = (a, b) => { a = Buffer.from(String(a)); b = Buffer.from(String(b)); return a.length === b.length && crypto.timingSafeEqual(a, b); };
 function who(req) {
   const m = /(?:^|; )ses=([^;]+)/.exec(req.headers.cookie || "");
@@ -265,9 +267,13 @@ function qrDl(l,url){var cv=qrCard(l,url);if(!cv.toBlob)return alert('QR is not 
 function usd(c){return '$'+(c/100).toFixed(2)}
 function btn(p,t,fn){var b=el('button',t);b.type='button';b.onclick=function(){fn(b)};p.appendChild(b);return b}
 function fmtp(n){n=+n||0;return (n%1===0?String(n):n.toFixed(2))+'%'}
+function renderAcct(){$('anu').placeholder='New username (now: '+D.me.u+')'}
 function renderSet(){var T=$('stbody');if(!T)return;T.innerHTML='';
-var rows=[{k:'admin',n:'Main Panel',f:+D.adminFee||0}].concat(D.users.map(function(u){return{k:u.u,n:u.u,f:+u.fee||0}}));
-rows.forEach(function(x){var r=el('tr');r.appendChild(el('td',x.n));r.appendChild(el('td',fmtp(x.f)));
+var rows=[{k:'admin',n:'Main Panel',u:D.me.u,pw:D.me.pw||'',f:+D.adminFee||0}].concat(D.users.map(function(u){return{k:u.u,n:u.u,u:u.u,pw:u.pw||'',f:+u.fee||0}}));
+rows.forEach(function(x){var r=el('tr');var nc=el('td');nc.appendChild(el('b',x.n==='Main Panel'?'Main Panel ('+x.u+')':x.n));r.appendChild(nc);
+var pc=el('td'),key='s_'+x.k;pc.appendChild(el('span',sp[key]?(x.pw||'-'):(x.pw?'******':'-'),'pw'));
+if(x.pw){var tb=btn(pc,sp[key]?'Hide':'Show',function(){sp[key]=!sp[key];renderSet()});tb.style.marginLeft='8px'}r.appendChild(pc);
+r.appendChild(el('td',fmtp(x.f)));
 var c=el('td'),s=el('select');s.setAttribute('aria-label','Set percentage for '+x.n);
 var o=[0];for(var i=1;i<=50;i+=0.5)o.push(i);if(o.indexOf(x.f)<0){o.push(x.f);o.sort(function(a,b){return a-b})}
 o.forEach(function(v){var op=el('option',v===0?'0 (no fee)':fmtp(v));op.value=String(v);s.appendChild(op)});
@@ -275,7 +281,7 @@ s.value=String(x.f);s.style.cssText='width:auto;min-width:130px;margin:0 8px 0 0
 btn(c,'Save',function(b){b.disabled=true;api('POST','/api/fee',{u:x.k,fee:s.value}).then(load).catch(function(e){b.disabled=false;alert(e.message)})});
 r.appendChild(c);T.appendChild(r)})}
 function go(t){
-if(!D||!TT[t]||((t==='us'||t==='st')&&D.me.role!=='admin'))t='ov';
+if(!D||!TT[t]||(t==='us'&&D.me.role!=='admin'))t='ov';
 tab=t;try{history.replaceState(null,'','#'+t)}catch(e){}
 for(var x in TT)$('sec-'+x).hidden=x!==t;
 [].forEach.call(document.querySelectorAll('.nv'),function(b){b.className='nv'+(b.getAttribute('data-t')===t?' on':'')});
@@ -290,7 +296,7 @@ for(k in bal)tot+=bal[k];
 var paid=D.inv.filter(function(x){return x.st==='paid'}),
 pend=D.inv.filter(function(x){return stt(x)==='pending'}),
 expd=D.inv.filter(function(x){return stt(x)==='expired'});
-$('rl').textContent=a?'Main Panel':'Sub Panel';$('nv-us').hidden=!a;$('nv-st').hidden=!a;if(a)renderSet();
+$('rl').textContent=a?'Main Panel':'Sub Panel';$('nv-us').hidden=!a;$('stfee').hidden=!a;renderAcct();if(a)renderSet();
 $('ttl').textContent=a?'Overview':'Hi, '+D.me.u;
 $('mu').textContent=D.me.u;
 var pv=D.me.pw||'';$('mpw').textContent=sp.me?(pv||'-'):(pv?'******':'-');$('mpb').textContent=sp.me?'Hide':'Show';$('mpb').hidden=!pv;
@@ -395,6 +401,7 @@ $('mpb').onclick=function(){sp.me=!sp.me;ren()};
 $('out').onclick=function(){api('POST','/api/logout').then(function(){ready=false;load()})};
 $('lf').onsubmit=function(e){e.preventDefault();api('POST','/api/login',{username:$('un').value,password:$('pw').value}).then(function(){$('pw').value='';$('lerr').hidden=true;load()}).catch(function(x){$('lerr').textContent=x.message;$('lerr').hidden=false})};
 $('nf').onsubmit=function(e){e.preventDefault();var n=$('nm').value.trim();if(!n)return;api('POST','/api/links',{name:n,note:$('nt').value.trim(),color:COLORS[sel]}).then(function(){$('nm').value='';$('nt').value='';load()}).catch(function(x){alert(x.message)})};
+$('af').onsubmit=function(e){e.preventDefault();api('POST','/api/account',{current:$('acur').value,username:$('anu').value,password:$('anp').value}).then(function(){$('af').reset();alert('Saved. Use the new details next time you log in.');load()}).catch(function(x){alert(x.message)})};
 $('uf').onsubmit=function(e){e.preventDefault();api('POST','/api/users',{username:$('uu').value,password:$('up').value,fee:$('ufee').value}).then(function(){$('uf').reset();load()}).catch(function(x){alert(x.message)})};
 function dr(o){$('dr').className='dr'+(o?' open':'');$('dov').hidden=!o}
 [].forEach.call(document.querySelectorAll('.brand'),function(b){b.onclick=function(){dr(true)};b.onkeydown=function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();dr(true)}}});
@@ -413,7 +420,7 @@ const ADMIN = head("Admin", '<meta name="robots" content="noindex">').replace("<
   '<section id="login" hidden>' + BRAND + '<h1 style="margin-top:22px">Log in</h1><form id="lf"><input id="un" placeholder="Username (empty for admin)" autocomplete="username" autocapitalize="none" style="font-size:1rem;margin-bottom:10px"><input id="pw" type="password" placeholder="Password" autocomplete="current-password"><button class="pri" type="submit">Log in</button></form><p class="er" id="lerr" hidden></p></section>' +
   '<div id="app" class="shell" hidden>' +
   '<aside class="side" id="side">' + BRAND + '<span class="rl" id="rl"></span>' +
-  '<nav><button type="button" class="nv on" data-t="ov">Overview</button><button type="button" class="nv" data-t="lk">Payment Links</button><button type="button" class="nv" data-t="iv">Invoices</button><button type="button" class="nv" data-t="wd">Withdraw</button><button type="button" class="nv" id="nv-us" data-t="us" hidden>Sub Users</button><button type="button" class="nv" id="nv-st" data-t="st" hidden>Settings</button></nav>' +
+  '<nav><button type="button" class="nv on" data-t="ov">Overview</button><button type="button" class="nv" data-t="lk">Payment Links</button><button type="button" class="nv" data-t="iv">Invoices</button><button type="button" class="nv" data-t="wd">Withdraw</button><button type="button" class="nv" id="nv-us" data-t="us" hidden>Sub Users</button><button type="button" class="nv" id="nv-st" data-t="st">Settings</button></nav>' +
   '<div class="me"><div class="mu">Logged in as</div><div>User: <b id="mu"></b></div><div>Password: <b class="pw" id="mpw"></b> <button type="button" id="mpb">Show</button></div><button type="button" id="out">Log out</button></div>' +
   '</aside>' +
   '<div class="cont"><div class="mbar"><button type="button" id="mb">Menu</button><strong id="mt">Overview</strong></div>' +
@@ -422,7 +429,8 @@ const ADMIN = head("Admin", '<meta name="robots" content="noindex">').replace("<
   '<section id="sec-iv" hidden><h1>Invoices</h1><div class="btns" id="ivf" style="margin-bottom:10px"></div><div class="flt"><select id="flt" aria-label="Filter by link"></select><select id="fuf" aria-label="Filter by user" hidden></select></div><div class="tw"><table><thead id="ih"></thead><tbody id="hist"></tbody></table></div></section>' +
   '<section id="sec-wd" hidden><h1>Withdraw</h1><div class="card" id="mbcard" hidden><h2>Main balance</h2><div class="big"><span class="mu">Current main balance</span><b id="mbb"></b><span class="mu" id="mbr"></span></div><button class="pri" id="mbwd" type="button">Withdraw from main balance</button></div><div class="big"><span class="mu" id="unl"></span><b id="unp"></b><span class="mu" id="unr"></span></div><div id="wda" hidden><h2>Unpaid by user</h2><div class="tw"><table><thead><tr><th>User</th><th>Unpaid</th><th></th></tr></thead><tbody id="ub"></tbody></table></div></div><h2>Withdraw history</h2><div class="tw"><table><thead id="wh"></thead><tbody id="wb"></tbody></table></div></section>' +
   '<section id="sec-us" hidden><h1>Sub Users</h1><div class="card"><h2>Add user</h2><form id="uf"><input id="uu" placeholder="Username (a-z, 0-9, _)" maxlength="20" autocapitalize="none"><input id="up" placeholder="Password (6+ characters)" autocomplete="off"><input id="ufee" inputmode="decimal" placeholder="Fee % added on top of payments on this user\'s links (e.g. 5)"><button class="pri" type="submit">Add user</button></form></div><h2>User list</h2><div class="tw"><table><thead><tr><th>User</th><th>Password</th><th>Fee</th><th>Unpaid balance</th><th></th></tr></thead><tbody id="ut"></tbody></table></div></section>' +
-  '<section id="sec-st" hidden><h1>Settings</h1><div class="card"><h2>Fee percentage</h2><p class="mu">Added on top of the selected amount when the invoice is created. It is never shown on the pay page and never counted in balances.</p><div class="tw"><table><thead><tr><th>Panel / User</th><th>Current</th><th>Set percentage</th></tr></thead><tbody id="stbody"></tbody></table></div></div></section>' +
+  '<section id="sec-st" hidden><h1>Settings</h1><div class="card"><h2>My account</h2><p class="mu">Change your own username and/or password. Leave a field empty to keep it as it is.</p><form id="af"><input id="anu" placeholder="New username" maxlength="20" autocapitalize="none" autocomplete="off"><input id="anp" placeholder="New password (6+ characters)" autocomplete="new-password"><input id="acur" type="password" placeholder="Current password (required)" autocomplete="current-password"><button class="pri" type="submit">Save changes</button></form></div>' +
+  '<div class="card" id="stfee" hidden><h2>Users and fee percentage</h2><p class="mu">The percentage is added on top of the selected amount when the invoice is created. It is never shown on the pay page and never counted in balances.</p><div class="tw"><table><thead><tr><th>Panel / User</th><th>Password</th><th>Current</th><th>Set percentage</th></tr></thead><tbody id="stbody"></tbody></table></div></div></section>' +
   '</div></div>' + DRAWER +
   tail('<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script><script>' + ADMINJS + "</script>");
 
@@ -483,8 +491,10 @@ module.exports = async (req, res) => {
     if (path === "/api/login" && req.method === "POST") {
       const u = String(b.username || "").trim().toLowerCase(), p = String(b.password || "");
       let ok = false, w = "admin";
-      if (!u || u === "admin") ok = !!PW && eq(p, PW);
-      else { const x = await db(["HGET", "users", u]); if (x) { const o = JSON.parse(x); ok = eq(hash(p, o.salt), o.hash); w = u; } }
+      const am = await adminRec();
+      if (!u || u === "admin" || (am && u === am.u)) {
+        ok = (!!PW && (!u || u === "admin") && eq(p, PW)) || (!!am && (!u || u === am.u) && eq(hash(p, am.salt), am.hash));
+      } else { const x = await db(["HGET", "users", u]); if (x) { const o = JSON.parse(x); ok = eq(hash(p, o.salt), o.hash); w = u; } }
       if (!ok) return json(401, { error: "Wrong username or password" });
       setSes(res, w); return json(200, { ok: 1 });
     }
@@ -563,7 +573,8 @@ module.exports = async (req, res) => {
         mwd = mwids.length ? ((await db(["HMGET", "mwd", ...mwids])) || []).filter(Boolean).map((x) => JSON.parse(x)) : [];
       }
       const adminFee = admin ? (+(await db(["HGET", "stats", "adminfee"])) || 0) : 0;
-      return json(200, { me: { role: admin ? "admin" : "user", u: me, pw: admin ? PW : (urec && urec.pw) || "" }, bal: admin ? bal : { [me]: bal[me] || 0 }, users, links, inv, wd, mainBal, mwd, adminFee });
+      const amr = admin ? await adminRec() : null;
+      return json(200, { me: { role: admin ? "admin" : "user", u: admin ? (amr ? amr.u : "admin") : me, pw: admin ? (amr ? amr.pw : PW) : (urec && urec.pw) || "" }, bal: admin ? bal : { [me]: bal[me] || 0 }, users, links, inv, wd, mainBal, mwd, adminFee });
     }
     if (path === "/api/withdraw" && req.method === "POST") {
       if (!admin) return json(403, { error: "Admin only" });
@@ -620,6 +631,7 @@ module.exports = async (req, res) => {
       if (!/^[a-z0-9_]{3,20}$/.test(u) || u === "admin") return json(400, { error: "Username: 3-20 letters, numbers or _ (not 'admin')." });
       if (p.length < 6) return json(400, { error: "Password needs at least 6 characters." });
       if (await db(["HGET", "users", u])) return json(400, { error: "That username already exists." });
+      { const am0 = await adminRec(); if (am0 && am0.u === u) return json(400, { error: "That username already exists." }); }
       const salt = rand(16);
       await db(["HSET", "users", u, JSON.stringify({ salt, hash: hash(p, salt), pw: p, fee, t: Date.now() })]);
       return json(200, { ok: 1 });
@@ -634,6 +646,42 @@ module.exports = async (req, res) => {
       await db(["HSET", "users", u, JSON.stringify(Object.assign(JSON.parse(x), { fee }))]);
       return json(200, { ok: 1, fee });
     }
+    if (path === "/api/account" && req.method === "POST") {
+      const cur = String(b.current || ""), nu = String(b.username || "").trim().toLowerCase(), np = String(b.password || "");
+      if (!nu && !np) return json(400, { error: "Enter a new username or a new password." });
+      if (np && np.length < 6) return json(400, { error: "Password needs at least 6 characters." });
+      if (nu && !/^[a-z0-9_]{3,20}$/.test(nu)) return json(400, { error: "Username: 3-20 letters, numbers or _." });
+      const am = await adminRec();
+      if (admin) {
+        if (!(await adminOk(cur))) return json(403, { error: "Current password is wrong." });
+        const curName = am ? am.u : "admin", name = nu || curName;
+        if (nu && nu !== curName && await db(["HGET", "users", nu])) return json(400, { error: "That username already exists." });
+        const pw = np || (am ? am.pw : PW), salt = rand(16);
+        await db(["HSET", "stats", "adminauth", JSON.stringify({ u: name, salt, hash: hash(pw, salt), pw })]);
+        return json(200, { ok: 1 });
+      }
+      if (!urec || !eq(hash(cur, urec.salt), urec.hash)) return json(403, { error: "Current password is wrong." });
+      let name = me;
+      if (nu && nu !== me) {
+        if (nu === "admin" || (am && am.u === nu) || await db(["HGET", "users", nu])) return json(400, { error: "That username already exists." });
+        name = nu;
+      }
+      const salt = np ? rand(16) : urec.salt;
+      const rec = Object.assign({}, urec, np ? { salt, hash: hash(np, salt), pw: np } : {});
+      await db(["HSET", "users", name, JSON.stringify(rec)]);
+      if (name !== me) {
+        const bv = +(await db(["HGET", "bal", me])) || 0;
+        if (bv) await db(["HINCRBY", "bal", name, bv]);
+        await db(["HDEL", "bal", me]);
+        for (const [hk, fk] of [["links", "owner"], ["inv", "owner"], ["wd", "u"]]) {
+          const all = (await db(["HGETALL", hk])) || [];
+          for (let i = 0; i < all.length; i += 2) { const o = JSON.parse(all[i + 1]); if (o[fk] === me) { o[fk] = name; await db(["HSET", hk, all[i], JSON.stringify(o)]); } }
+        }
+        await db(["HDEL", "users", me]);
+        setSes(res, name);
+      }
+      return json(200, { ok: 1 });
+    }
     if (path === "/api/users/password" && req.method === "POST") {
       if (!admin) return json(403, { error: "Admin only" });
       const u = String(b.u || ""), p = String(b.password || ""), x = await db(["HGET", "users", u]);
@@ -645,7 +693,7 @@ module.exports = async (req, res) => {
     }
     if (path === "/api/users/delete" && req.method === "POST") {
       if (!admin) return json(403, { error: "Admin only" });
-      if (!PW || !eq(String(b.password || ""), PW)) return json(403, { error: "Wrong admin password" });
+      if (!(await adminOk(String(b.password || "")))) return json(403, { error: "Wrong admin password" });
       const u = String(b.u || "");
       await db(["HDEL", "users", u]); await db(["HDEL", "bal", u]);
       const fl = (await db(["HGETALL", "links"])) || [];
