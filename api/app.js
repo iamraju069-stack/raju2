@@ -248,7 +248,7 @@ function payPage(slug, link, req, feePct) {
 
 const ADMINJS = String.raw`var COLORS=${JSON.stringify(COLORS)},sel=0,D=null,tab='ov',sp={},ready=false,statF='';
 var $=function(i){return document.getElementById(i)};
-var TT={ov:'Overview',lk:'Payment Links',iv:'Invoices',wd:'Withdraw',us:'Sub Users'};
+var TT={ov:'Overview',lk:'Payment Links',iv:'Invoices',wd:'Withdraw',us:'Sub Users',st:'Settings'};
 function el(t,x,c){var e=document.createElement(t);if(x!=null)e.textContent=x;if(c)e.className=c;return e}
 function api(m,u,b){return fetch(u,{method:m,headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):undefined}).then(function(r){return r.json().then(function(j){if(!r.ok){var e=new Error(j.error||'Error');e.status=r.status;throw e}return j})})}
 var qc={};
@@ -264,8 +264,18 @@ qc[url]=cv;return cv}catch(e){return el('span')}}
 function qrDl(l,url){var cv=qrCard(l,url);if(!cv.toBlob)return alert('QR is not ready yet.');cv.toBlob(function(b){var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=l.slug+'-qr.png';document.body.appendChild(a);a.click();a.remove()})}
 function usd(c){return '$'+(c/100).toFixed(2)}
 function btn(p,t,fn){var b=el('button',t);b.type='button';b.onclick=function(){fn(b)};p.appendChild(b);return b}
+function fmtp(n){n=+n||0;return (n%1===0?String(n):n.toFixed(2))+'%'}
+function renderSet(){var T=$('stbody');if(!T)return;T.innerHTML='';
+var rows=[{k:'admin',n:'Main Panel',f:+D.adminFee||0}].concat(D.users.map(function(u){return{k:u.u,n:u.u,f:+u.fee||0}}));
+rows.forEach(function(x){var r=el('tr');r.appendChild(el('td',x.n));r.appendChild(el('td',fmtp(x.f)));
+var c=el('td'),s=el('select');s.setAttribute('aria-label','Set percentage for '+x.n);
+var o=[0];for(var i=1;i<=50;i+=0.5)o.push(i);if(o.indexOf(x.f)<0){o.push(x.f);o.sort(function(a,b){return a-b})}
+o.forEach(function(v){var op=el('option',v===0?'0 (no fee)':fmtp(v));op.value=String(v);s.appendChild(op)});
+s.value=String(x.f);s.style.cssText='width:auto;min-width:130px;margin:0 8px 0 0;padding:8px 10px;font-size:.95rem';c.appendChild(s);
+btn(c,'Save',function(b){b.disabled=true;api('POST','/api/fee',{u:x.k,fee:s.value}).then(load).catch(function(e){b.disabled=false;alert(e.message)})});
+r.appendChild(c);T.appendChild(r)})}
 function go(t){
-if(!D||!TT[t]||(t==='us'&&D.me.role!=='admin'))t='ov';
+if(!D||!TT[t]||((t==='us'||t==='st')&&D.me.role!=='admin'))t='ov';
 tab=t;try{history.replaceState(null,'','#'+t)}catch(e){}
 for(var x in TT)$('sec-'+x).hidden=x!==t;
 [].forEach.call(document.querySelectorAll('.nv'),function(b){b.className='nv'+(b.getAttribute('data-t')===t?' on':'')});
@@ -280,7 +290,7 @@ for(k in bal)tot+=bal[k];
 var paid=D.inv.filter(function(x){return x.st==='paid'}),
 pend=D.inv.filter(function(x){return stt(x)==='pending'}),
 expd=D.inv.filter(function(x){return stt(x)==='expired'});
-$('rl').textContent=a?'Main Panel':'Sub Panel';$('nv-us').hidden=!a;
+$('rl').textContent=a?'Main Panel':'Sub Panel';$('nv-us').hidden=!a;$('nv-st').hidden=!a;if(a)renderSet();
 $('ttl').textContent=a?'Overview':'Hi, '+D.me.u;
 $('mu').textContent=D.me.u;
 var pv=D.me.pw||'';$('mpw').textContent=sp.me?(pv||'-'):(pv?'******':'-');$('mpb').textContent=sp.me?'Hide':'Show';$('mpb').hidden=!pv;
@@ -403,7 +413,7 @@ const ADMIN = head("Admin", '<meta name="robots" content="noindex">').replace("<
   '<section id="login" hidden>' + BRAND + '<h1 style="margin-top:22px">Log in</h1><form id="lf"><input id="un" placeholder="Username (empty for admin)" autocomplete="username" autocapitalize="none" style="font-size:1rem;margin-bottom:10px"><input id="pw" type="password" placeholder="Password" autocomplete="current-password"><button class="pri" type="submit">Log in</button></form><p class="er" id="lerr" hidden></p></section>' +
   '<div id="app" class="shell" hidden>' +
   '<aside class="side" id="side">' + BRAND + '<span class="rl" id="rl"></span>' +
-  '<nav><button type="button" class="nv on" data-t="ov">Overview</button><button type="button" class="nv" data-t="lk">Payment Links</button><button type="button" class="nv" data-t="iv">Invoices</button><button type="button" class="nv" data-t="wd">Withdraw</button><button type="button" class="nv" id="nv-us" data-t="us" hidden>Sub Users</button></nav>' +
+  '<nav><button type="button" class="nv on" data-t="ov">Overview</button><button type="button" class="nv" data-t="lk">Payment Links</button><button type="button" class="nv" data-t="iv">Invoices</button><button type="button" class="nv" data-t="wd">Withdraw</button><button type="button" class="nv" id="nv-us" data-t="us" hidden>Sub Users</button><button type="button" class="nv" id="nv-st" data-t="st" hidden>Settings</button></nav>' +
   '<div class="me"><div class="mu">Logged in as</div><div>User: <b id="mu"></b></div><div>Password: <b class="pw" id="mpw"></b> <button type="button" id="mpb">Show</button></div><button type="button" id="out">Log out</button></div>' +
   '</aside>' +
   '<div class="cont"><div class="mbar"><button type="button" id="mb">Menu</button><strong id="mt">Overview</strong></div>' +
@@ -412,6 +422,7 @@ const ADMIN = head("Admin", '<meta name="robots" content="noindex">').replace("<
   '<section id="sec-iv" hidden><h1>Invoices</h1><div class="btns" id="ivf" style="margin-bottom:10px"></div><div class="flt"><select id="flt" aria-label="Filter by link"></select><select id="fuf" aria-label="Filter by user" hidden></select></div><div class="tw"><table><thead id="ih"></thead><tbody id="hist"></tbody></table></div></section>' +
   '<section id="sec-wd" hidden><h1>Withdraw</h1><div class="card" id="mbcard" hidden><h2>Main balance</h2><div class="big"><span class="mu">Current main balance</span><b id="mbb"></b><span class="mu" id="mbr"></span></div><button class="pri" id="mbwd" type="button">Withdraw from main balance</button></div><div class="big"><span class="mu" id="unl"></span><b id="unp"></b><span class="mu" id="unr"></span></div><div id="wda" hidden><h2>Unpaid by user</h2><div class="tw"><table><thead><tr><th>User</th><th>Unpaid</th><th></th></tr></thead><tbody id="ub"></tbody></table></div></div><h2>Withdraw history</h2><div class="tw"><table><thead id="wh"></thead><tbody id="wb"></tbody></table></div></section>' +
   '<section id="sec-us" hidden><h1>Sub Users</h1><div class="card"><h2>Add user</h2><form id="uf"><input id="uu" placeholder="Username (a-z, 0-9, _)" maxlength="20" autocapitalize="none"><input id="up" placeholder="Password (6+ characters)" autocomplete="off"><input id="ufee" inputmode="decimal" placeholder="Fee % added on top of payments on this user\'s links (e.g. 5)"><button class="pri" type="submit">Add user</button></form></div><h2>User list</h2><div class="tw"><table><thead><tr><th>User</th><th>Password</th><th>Fee</th><th>Unpaid balance</th><th></th></tr></thead><tbody id="ut"></tbody></table></div></section>' +
+  '<section id="sec-st" hidden><h1>Settings</h1><div class="card"><h2>Fee percentage</h2><p class="mu">Added on top of the selected amount when the invoice is created. It is never shown on the pay page and never counted in balances.</p><div class="tw"><table><thead><tr><th>Panel / User</th><th>Current</th><th>Set percentage</th></tr></thead><tbody id="stbody"></tbody></table></div></div></section>' +
   '</div></div>' + DRAWER +
   tail('<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script><script>' + ADMINJS + "</script>");
 
@@ -492,6 +503,9 @@ module.exports = async (req, res) => {
       if (l.owner && l.owner !== "admin") {
         const ux = await db(["HGET", "users", l.owner]);
         if (ux) { feePct = +JSON.parse(ux).fee || 0; payUsd = Math.round(usd * (1 + feePct / 100) * 100) / 100; }
+      } else {
+        feePct = +(await db(["HGET", "stats", "adminfee"])) || 0;
+        payUsd = Math.round(usd * (1 + feePct / 100) * 100) / 100;
       }
       if (payUsd > 10000) return json(400, { error: "Enter an amount between $0.01 and $10,000." });
       const price = await btcUsd(), sats = Math.round(payUsd / price * 1e8), ms = sats * 1000;
@@ -548,7 +562,8 @@ module.exports = async (req, res) => {
         const mwids = (await db(["LRANGE", "mwdlog", 0, 299])) || [];
         mwd = mwids.length ? ((await db(["HMGET", "mwd", ...mwids])) || []).filter(Boolean).map((x) => JSON.parse(x)) : [];
       }
-      return json(200, { me: { role: admin ? "admin" : "user", u: me, pw: admin ? PW : (urec && urec.pw) || "" }, bal: admin ? bal : { [me]: bal[me] || 0 }, users, links, inv, wd, mainBal, mwd });
+      const adminFee = admin ? (+(await db(["HGET", "stats", "adminfee"])) || 0) : 0;
+      return json(200, { me: { role: admin ? "admin" : "user", u: me, pw: admin ? PW : (urec && urec.pw) || "" }, bal: admin ? bal : { [me]: bal[me] || 0 }, users, links, inv, wd, mainBal, mwd, adminFee });
     }
     if (path === "/api/withdraw" && req.method === "POST") {
       if (!admin) return json(403, { error: "Admin only" });
@@ -608,6 +623,16 @@ module.exports = async (req, res) => {
       const salt = rand(16);
       await db(["HSET", "users", u, JSON.stringify({ salt, hash: hash(p, salt), pw: p, fee, t: Date.now() })]);
       return json(200, { ok: 1 });
+    }
+    if (path === "/api/fee" && req.method === "POST") {
+      if (!admin) return json(403, { error: "Admin only" });
+      const u = String(b.u || ""), fee = parseFloat(b.fee);
+      if (!(fee >= 0 && fee <= 50) || Math.round(fee * 2) / 2 !== fee) return json(400, { error: "Choose a percentage from 0 to 50 (steps of 0.5)." });
+      if (u === "admin") { await db(["HSET", "stats", "adminfee", String(fee)]); return json(200, { ok: 1, fee }); }
+      const x = await db(["HGET", "users", u]);
+      if (!x) return json(404, { error: "User not found" });
+      await db(["HSET", "users", u, JSON.stringify(Object.assign(JSON.parse(x), { fee }))]);
+      return json(200, { ok: 1, fee });
     }
     if (path === "/api/users/password" && req.method === "POST") {
       if (!admin) return json(403, { error: "Admin only" });
