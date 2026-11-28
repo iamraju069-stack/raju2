@@ -197,7 +197,10 @@ const PAYCSS = "body.pay{--ink:#fff;--mu:rgba(255,255,255,.85);--ac:#fff;backgro
 "body.pay .kp button:active{background:rgba(255,255,255,.32)}body.pay .kp svg{stroke:#fff;width:26px;height:20px}" +
 "body.pay .pri{background:#04861f;color:#fff;margin-top:10px;padding:14px;font-size:1.1rem;border-radius:18px;box-shadow:0 8px 20px rgba(0,0,0,.18)}body.pay .pri:disabled{background:#05a226;color:rgba(255,255,255,.75)}" +
 "body.pay .er{color:#fff;background:rgba(0,0,0,.2);border-radius:10px;padding:6px}body.pay .gb{background:#04861f;color:#fff}body.pay .lk2{color:#fff}body.pay .exp{background:rgba(0,0,0,.25);border-color:rgba(255,255,255,.2)}" +
-"body.pay .qlogo,body.pay .ico{color:#00b843}body.pay .pg{background:rgba(255,255,255,.3)}";
+"body.pay .qlogo,body.pay .ico{color:#00b843}body.pay .pg{background:rgba(255,255,255,.3)}" +
+"body.pay .paytip{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);border-radius:16px;padding:12px 14px;margin:10px 0;text-align:left}" +
+"body.pay .paytip strong{display:block;font-weight:800;font-size:.95rem;margin-bottom:6px;color:#fff}" +
+"body.pay .paytip p{font-weight:300;font-size:.85rem;line-height:1.45;margin:0;color:rgba(255,255,255,.92)}";
 const pageFix = (h) => h.replace("<body>", '<body class="pay">').replace('content="#070d0a"', 'content="#00d64f"').replace("</head>", "<style>" + PAYCSS + "</style></head>");
 
 function payPage(slug, link, req) {
@@ -219,7 +222,7 @@ function payPage(slug, link, req) {
     '<button class="wb" id="tn" type="button">Got it, next</button><button class="lk2" id="tsk" type="button">Skip</button></section>';
   const inv2 = '<section id="s2" class="c" hidden><div class="exp-w"><span class="exp"><i></i>Expires in <b class="cdv" id="cd">30:00</b></span></div>' +
     '<div class="ico" style="margin-top:8px">$</div><h1 style="margin:6px 0 2px">Pay with Bitcoin</h1><div class="big" id="top"></div><div class="mu" id="sats" style="margin:4px 0"></div><p class="mu" id="stt" aria-live="polite" style="margin:0 0 4px"></p>' +
-    '<div id="pay"><div class="qr"><div id="qr"></div><div class="qlogo">$</div></div><button class="gb" id="cp" type="button">Copy invoice</button><textarea id="inv" readonly aria-label="Lightning invoice" style="position:absolute;left:-9999px;width:1px;height:1px"></textarea><button class="wb" id="oc" type="button">Open Cash App</button><button class="lk2" id="rep" type="button">Watch the steps again</button></div>' +
+    '<div id="pay"><div class="qr"><div id="qr"></div><div class="qlogo">$</div></div><div class="paytip"><strong>Pay from your Cash App balance (no need to buy BTC first)</strong><p>Open Cash App &rarr; Money ($) tab &rarr; Bitcoin &rarr; Send &rarr; Scan or paste this address &rarr; Confirm</p></div><button class="gb" id="cp" type="button">Copy invoice</button><textarea id="inv" readonly aria-label="Lightning invoice" style="position:absolute;left:-9999px;width:1px;height:1px"></textarea><button class="wb" id="oc" type="button">Open Cash App</button><button class="lk2" id="rep" type="button">Watch the steps again</button></div>' +
     '<button class="lk2" id="again" type="button">Start over</button></section>';
   return pageFix(head(name, og)) +
     '<section id="s1\" class="panel c"><h1>Pay ' + esc(name) + '</h1><span class="pill">&#10003; Secure Payment</span>' +
