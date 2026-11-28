@@ -177,7 +177,7 @@ $('go').onclick=function(){var er=$('er');er.hidden=true;var usd=parseFloat(amt)
 var b=$('go');b.disabled=true;b.textContent='Creating invoice...';
 fetch('/api/invoice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slug:SLUG,usd:usd})}).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||'Error');return j})}).then(function(j){
 cur=j.pr;iid=j.id;exp=j.exp;$('inv').value=j.pr;$('top').textContent='$'+usd.toFixed(2);$('sats').textContent=j.sats.toLocaleString()+' sats at 1 BTC = $'+Math.round(j.price).toLocaleString();
-var q=$('qr');q.innerHTML='';if(window.QRCode)new QRCode(q,{text:'LIGHTNING:'+j.pr.toUpperCase(),width:240,height:240,correctLevel:QRCode.CorrectLevel.M});
+var q=$('qr');q.innerHTML='';if(window.QRCode)new QRCode(q,{text:'LIGHTNING:'+j.pr.toUpperCase(),width:168,height:168,correctLevel:QRCode.CorrectLevel.M});
 $('pay').hidden=false;$('stt').textContent='Waiting for your payment...';show('st');tset(0);tick();stop();tm=setInterval(tick,1000);pt=setInterval(poll,3000)
 }).catch(function(e){er.textContent=e.message||'Something went wrong.';er.hidden=false}).then(function(){b.disabled=false;draw()})};
 $('cp').onclick=function(){var b=this;cp().then(function(){b.textContent='Copied';setTimeout(function(){b.textContent='Copy invoice'},1800)})};
@@ -199,8 +199,15 @@ const PAYCSS = "body.pay{--ink:#fff;--mu:rgba(255,255,255,.85);--ac:#fff;backgro
 "body.pay .er{color:#fff;background:rgba(0,0,0,.2);border-radius:10px;padding:6px}body.pay .gb{background:#04861f;color:#fff}body.pay .lk2{color:#fff}body.pay .exp{background:rgba(0,0,0,.25);border-color:rgba(255,255,255,.2)}" +
 "body.pay .qlogo,body.pay .ico{color:#00b843}body.pay .pg{background:rgba(255,255,255,.3)}" +
 "body.pay .paytip{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);border-radius:16px;padding:12px 14px;margin:10px 0;text-align:left}" +
-"body.pay .paytip strong{display:block;font-weight:800;font-size:.95rem;margin-bottom:6px;color:#fff}" +
-"body.pay .paytip p{font-weight:300;font-size:.85rem;line-height:1.45;margin:0;color:rgba(255,255,255,.92)}";
+"body.pay .paytip strong{display:block;font-weight:800;font-size:.82rem;margin-bottom:4px;color:#fff}" +
+"body.pay .paytip p{font-weight:300;font-size:.74rem;line-height:1.35;margin:0;color:rgba(255,255,255,.92)}" +
+"body.pay .paytip{padding:8px 12px;margin:6px 0}" +
+"body.pay #s2{padding-bottom:6px}body.pay #s2 .ico{width:40px;height:40px;font-size:1.4rem;line-height:40px;margin:0 auto 4px}" +
+"body.pay #s2 h1{margin:0 0 2px}body.pay #s2 .big{font-size:1.9rem;margin:0}body.pay #s2 .mu{font-size:.72rem;margin:1px 0!important}body.pay #s2 p.mu{font-size:.72rem}" +
+"body.pay #s2 .exp-w{margin-bottom:2px}body.pay #s2 .exp{padding:3px 10px;font-size:.7rem}" +
+"body.pay #s2 .qr{padding:8px;margin:6px auto}body.pay #s2 .qlogo{width:34px;height:34px;margin:-17px 0 0 -17px;font-size:1.1rem;line-height:28px}" +
+"body.pay #s2 .gb{padding:10px;margin-top:6px;font-size:.92rem}body.pay #s2 .wb{padding:10px;margin-top:6px;font-size:.92rem}" +
+"body.pay #s2 .lk2{margin-top:3px;font-size:.74rem}";
 const pageFix = (h) => h.replace("<body>", '<body class="pay">').replace('content="#070d0a"', 'content="#00d64f"').replace("</head>", "<style>" + PAYCSS + "</style></head>");
 
 function payPage(slug, link, req) {
