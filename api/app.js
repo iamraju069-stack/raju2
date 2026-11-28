@@ -324,7 +324,10 @@ var WH=$('wh');WH.innerHTML='';var wr=el('tr');(a?['Time','User','Paid','']:['Ti
 var WB=$('wb');WB.innerHTML='';
 if(!D.wd.length){var wr2=el('tr'),wc2=el('td','No payments yet.','mu');wc2.colSpan=a?4:2;wr2.appendChild(wc2);WB.appendChild(wr2)}
 D.wd.forEach(function(x){var r=el('tr');r.appendChild(el('td',new Date(x.t).toLocaleString()));if(a)r.appendChild(el('td',x.u));r.appendChild(el('td',usd(x.amt)));
-if(a){var c=el('td');btn(c,'Undo',function(){if(confirm('Undo this payment? '+usd(x.amt)+' goes back to '+x.u+' as unpaid balance.'))api('POST','/api/withdraw/undo',{id:x.id}).then(load).catch(function(e){alert(e.message)})});r.appendChild(c)}WB.appendChild(r)});
+if(a){var c=el('td');btn(c,'Undo',function(){undoPay(x)});r.appendChild(c)}WB.appendChild(r)});
+$('mwa').hidden=!a;var MB=$('mwb');MB.innerHTML='';
+if(a){if(!(D.mwd||[]).length){var mr0=el('tr'),mc0=el('td','No withdrawals yet.','mu');mc0.colSpan=3;mr0.appendChild(mc0);MB.appendChild(mr0)}
+(D.mwd||[]).forEach(function(x){var r=el('tr');r.appendChild(el('td',new Date(x.t).toLocaleString()));r.appendChild(el('td',usd(x.amt)));var c=el('td');btn(c,'Undo',function(){undoMain(x)});r.appendChild(c);MB.appendChild(r)})}
 /* ---- sub users (main panel only) ---- */
 var U=$('ut');U.innerHTML='';
 if(a){
@@ -381,17 +384,23 @@ c.appendChild(el('span',sid(x),'pw'));
 if(x.pr){var tg=btn(c,'Full',function(){full.hidden=!full.hidden;tg.textContent=full.hidden?'Full':'Hide'});tg.style.marginLeft='8px';
 var cb=btn(c,'Copy',function(b){navigator.clipboard.writeText(x.pr);b.textContent='Copied';setTimeout(function(){b.textContent='Copy'},1500)});cb.style.marginLeft='6px'}
 c.appendChild(full);return c}
+function askDlg(o,cb){var ov=el('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:16px;z-index:99';
+var bx=el('div');bx.className='card';bx.style.cssText='width:100%;max-width:380px;margin:0';
+bx.appendChild(el('h2',o.title));bx.appendChild(el('p',o.info,'mu'));
+var am=null;if(o.amount!=null){am=el('input');am.type='number';am.step='0.01';am.min='0.01';am.value=o.amount;am.setAttribute('aria-label','Amount in USD');bx.appendChild(am)}
+var pw=el('input');pw.type='password';pw.placeholder='Your password (required)';pw.setAttribute('autocomplete','current-password');bx.appendChild(pw);
+var row=el('div');row.style.cssText='display:flex;gap:8px';
+var ok=btn(row,o.ok||'Confirm',function(){if(am&&!(parseFloat(am.value)>0)){alert('Enter a valid amount.');return}if(!pw.value){alert('Enter your password.');return}ok.disabled=true;
+cb(am?am.value:null,pw.value,function(){document.body.removeChild(ov)},function(){ok.disabled=false})});ok.className='pri';
+btn(row,'Cancel',function(){document.body.removeChild(ov)});bx.appendChild(row);ov.appendChild(bx);document.body.appendChild(ov);(am||pw).focus()}
+function doPost(url,body,close,reset){api('POST',url,body).then(function(){close();load()}).catch(function(e){reset();alert(e.message)})}
 function payUser(u){var left=D.bal[u]||0;if(left<=0){alert('Nothing is unpaid for '+u+'.');return}
-var p=prompt('Pay how much to '+u+'?\nUnpaid: '+usd(left)+'\nEnter the amount in USD:',(left/100).toFixed(2));if(!p)return;
-var n=parseFloat(p);if(!(n>0)){alert('Enter a valid amount.');return}
-if(!confirm('Record a payment of $'+n.toFixed(2)+' to '+u+'?\nRemaining unpaid: '+usd(Math.max(0,left-Math.round(n*100)))))return;
-api('POST','/api/withdraw',{u:u,usd:n}).then(load).catch(function(e){alert(e.message)})}
+askDlg({title:'Pay '+u,info:'Unpaid: '+usd(left)+'. The amount you pay moves to the paid history, the rest stays unpaid.',amount:(left/100).toFixed(2),ok:'Pay'},function(a,pw,close,reset){doPost('/api/withdraw',{u:u,usd:parseFloat(a),password:pw},close,reset)})}
+function undoPay(x){askDlg({title:'Undo payment',info:usd(x.amt)+' goes back to '+x.u+' as unpaid balance.',ok:'Undo'},function(a,pw,close,reset){doPost('/api/withdraw/undo',{id:x.id,password:pw},close,reset)})}
+function undoMain(x){askDlg({title:'Undo withdrawal',info:usd(x.amt)+' goes back to the main balance.',ok:'Undo'},function(a,pw,close,reset){doPost('/api/withdraw/main/undo',{id:x.id,password:pw},close,reset)})}
 function ren(){if(D)render()}
 $('mbwd').onclick=function(){var left=D.mainBal||0;
-var p=prompt('Withdraw how much from the main balance?\nCurrent: '+usd(left)+'\nEnter the amount in USD:',(left/100).toFixed(2));if(!p)return;
-var n=parseFloat(p);if(!(n>0)){alert('Enter a valid amount.');return}
-if(!confirm('Withdraw $'+n.toFixed(2)+' from the main balance?\nRemaining: '+usd(Math.max(0,left-Math.round(n*100)))))return;
-api('POST','/api/withdraw/main',{usd:n}).then(load).catch(function(e){alert(e.message)})};
+askDlg({title:'Withdraw from main balance',info:'Current main balance: '+usd(left),amount:(left/100).toFixed(2),ok:'Withdraw'},function(a,pw,close,reset){doPost('/api/withdraw/main',{usd:parseFloat(a),password:pw},close,reset)})};
 var sw=$('sw');
 COLORS.forEach(function(c,i){var b=el('button');b.type='button';b.className='swb'+(i==0?' on':'');b.style.background=c;b.setAttribute('aria-label','Color '+(i+1));b.onclick=function(){sel=i;[].forEach.call(sw.children,function(x,j){x.className='swb'+(j==i?' on':'')})};sw.appendChild(b)});
 [].forEach.call(document.querySelectorAll('.nv'),function(b){b.onclick=function(){go(b.getAttribute('data-t'))}});
@@ -427,7 +436,7 @@ const ADMIN = head("Admin", '<meta name="robots" content="noindex">').replace("<
   '<section id="sec-ov"><h1 id="ttl">Overview</h1><div class="grid" id="cards"></div><h2>Recent payments</h2><div class="tw"><table><tbody id="rp"></tbody></table></div></section>' +
   '<section id="sec-lk" hidden><h1>Payment Links</h1><div class="card"><h2>Create a new link</h2><form id="nf"><input id="nm" placeholder="Link name (shown big on the preview)" maxlength="60"><input id="nt" placeholder="Short note (optional)" maxlength="100"><div class="sw" id="sw"></div><button class="pri" type="submit">Create link</button></form></div><h2>Your links</h2><div id="links"></div></section>' +
   '<section id="sec-iv" hidden><h1>Invoices</h1><div class="btns" id="ivf" style="margin-bottom:10px"></div><div class="flt"><select id="flt" aria-label="Filter by link"></select><select id="fuf" aria-label="Filter by user" hidden></select></div><div class="tw"><table><thead id="ih"></thead><tbody id="hist"></tbody></table></div></section>' +
-  '<section id="sec-wd" hidden><h1>Withdraw</h1><div class="card" id="mbcard" hidden><h2>Main balance</h2><div class="big"><span class="mu">Current main balance</span><b id="mbb"></b><span class="mu" id="mbr"></span></div><button class="pri" id="mbwd" type="button">Withdraw from main balance</button></div><div class="big"><span class="mu" id="unl"></span><b id="unp"></b><span class="mu" id="unr"></span></div><div id="wda" hidden><h2>Unpaid by user</h2><div class="tw"><table><thead><tr><th>User</th><th>Unpaid</th><th></th></tr></thead><tbody id="ub"></tbody></table></div></div><h2>Withdraw history</h2><div class="tw"><table><thead id="wh"></thead><tbody id="wb"></tbody></table></div></section>' +
+  '<section id="sec-wd" hidden><h1>Withdraw</h1><div class="card" id="mbcard" hidden><h2>Main balance</h2><div class="big"><span class="mu">Current main balance</span><b id="mbb"></b><span class="mu" id="mbr"></span></div><button class="pri" id="mbwd" type="button">Withdraw from main balance</button></div><div class="big"><span class="mu" id="unl"></span><b id="unp"></b><span class="mu" id="unr"></span></div><div id="wda" hidden><h2>Unpaid by user</h2><div class="tw"><table><thead><tr><th>User</th><th>Unpaid</th><th></th></tr></thead><tbody id="ub"></tbody></table></div></div><h2>Paid bills history</h2><div class="tw"><table><thead id="wh"></thead><tbody id="wb"></tbody></table></div><div id="mwa" hidden><h2>Main balance withdraw history</h2><div class="tw"><table><thead><tr><th>Time</th><th>Withdrawn</th><th></th></tr></thead><tbody id="mwb"></tbody></table></div></div></section>' +
   '<section id="sec-us" hidden><h1>Sub Users</h1><div class="card"><h2>Add user</h2><form id="uf"><input id="uu" placeholder="Username (a-z, 0-9, _)" maxlength="20" autocapitalize="none"><input id="up" placeholder="Password (6+ characters)" autocomplete="off"><input id="ufee" inputmode="decimal" placeholder="Fee % added on top of payments on this user\'s links (e.g. 5)"><button class="pri" type="submit">Add user</button></form></div><h2>User list</h2><div class="tw"><table><thead><tr><th>User</th><th>Password</th><th>Fee</th><th>Unpaid balance</th><th></th></tr></thead><tbody id="ut"></tbody></table></div></section>' +
   '<section id="sec-st" hidden><h1>Settings</h1><div class="card"><h2>My account</h2><p class="mu">Change your own username and/or password. Leave a field empty to keep it as it is.</p><form id="af"><input id="anu" placeholder="New username" maxlength="20" autocapitalize="none" autocomplete="off"><input id="anp" placeholder="New password (6+ characters)" autocomplete="new-password"><input id="acur" type="password" placeholder="Current password (required)" autocomplete="current-password"><button class="pri" type="submit">Save changes</button></form></div>' +
   '<div class="card" id="stfee" hidden><h2>Users and fee percentage</h2><p class="mu">The percentage is added on top of the selected amount when the invoice is created. It is never shown on the pay page and never counted in balances.</p><div class="tw"><table><thead><tr><th>Panel / User</th><th>Password</th><th>Current</th><th>Set percentage</th></tr></thead><tbody id="stbody"></tbody></table></div></div></section>' +
@@ -578,6 +587,7 @@ module.exports = async (req, res) => {
     }
     if (path === "/api/withdraw" && req.method === "POST") {
       if (!admin) return json(403, { error: "Admin only" });
+      if (!(await adminOk(String(b.password || "")))) return json(403, { error: "Wrong password" });
       const u = String(b.u || ""), cents = Math.round(parseFloat(b.usd) * 100);
       if (!(cents > 0) || cents > 1e9) return json(400, { error: "Enter a valid amount." });
       if (u !== "admin" && !(await db(["HGET", "users", u]))) return json(404, { error: "User not found" });
@@ -589,6 +599,7 @@ module.exports = async (req, res) => {
     }
     if (path === "/api/withdraw/main" && req.method === "POST") {
       if (!admin) return json(403, { error: "Admin only" });
+      if (!(await adminOk(String(b.password || "")))) return json(403, { error: "Wrong password" });
       const cents = Math.round(parseFloat(b.usd) * 100);
       if (!(cents > 0) || cents > 1e9) return json(400, { error: "Enter a valid amount." });
       const left = +(await db(["HINCRBY", "stats", "main", -cents]));
@@ -599,6 +610,7 @@ module.exports = async (req, res) => {
     }
     if (path === "/api/withdraw/main/undo" && req.method === "POST") {
       if (!admin) return json(403, { error: "Admin only" });
+      if (!(await adminOk(String(b.password || "")))) return json(403, { error: "Wrong password" });
       const id = String(b.id || ""), v = await db(["HGET", "mwd", id]);
       if (!v) return json(404, { error: "Withdrawal not found" });
       const r = JSON.parse(v);
@@ -608,6 +620,7 @@ module.exports = async (req, res) => {
     }
     if (path === "/api/withdraw/undo" && req.method === "POST") {
       if (!admin) return json(403, { error: "Admin only" });
+      if (!(await adminOk(String(b.password || "")))) return json(403, { error: "Wrong password" });
       const id = String(b.id || ""), v = await db(["HGET", "wd", id]);
       if (!v) return json(404, { error: "Payment not found" });
       const r = JSON.parse(v);
