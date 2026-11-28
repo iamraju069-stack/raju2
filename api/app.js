@@ -164,7 +164,7 @@ const PAYJS = String.raw`var $=function(i){return document.getElementById(i)},cu
 function show(s){['s1','st','s2','s3'].forEach(function(x){$(x).hidden=x!==s});window.scrollTo(0,0)}
 function stop(){clearInterval(tm);clearInterval(pt)}
 function cp(){return navigator.clipboard.writeText(cur).catch(function(){$('inv').select();document.execCommand('copy')})}
-function draw(){$('big').textContent='$'+(amt||'0');var v=parseFloat(amt),t=v>0?v*(1+FEEPCT/100):0;$('go').disabled=!(v>0);$('go').textContent=v>0?'Pay $'+t.toFixed(2):'Pay'}
+function draw(){$('big').textContent='$'+(amt||'0');var v=parseFloat(amt);$('go').disabled=!(v>0);$('go').textContent=v>0?'Pay $'+v.toFixed(2):'Pay'}
 $('kp').onclick=function(e){var k=e.target.getAttribute('data-k');if(k==null)return;$('er').hidden=true;
 if(k==='b')amt=amt.slice(0,-1);else if(k==='.'){if(amt.indexOf('.')<0)amt=(amt||'0')+'.'}else{if(/\.\d\d$/.test(amt)||amt.length>=8)return;amt=amt==='0'?k:amt+k}draw()};
 function tick(){var s=Math.max(0,Math.round((exp-Date.now())/1000)),t=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'),e=document.querySelectorAll('.cdv');for(var i=0;i<e.length;i++)e[i].textContent=t}
@@ -178,7 +178,7 @@ $('rep').onclick=function(){show('st');tset(0)};
 $('go').onclick=function(){var er=$('er');er.hidden=true;var usd=parseFloat(amt);if(!(usd>0))return;
 var b=$('go');b.disabled=true;b.textContent='Creating invoice...';
 fetch('/api/invoice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slug:SLUG,usd:usd})}).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||'Error');return j})}).then(function(j){
-cur=j.pr;iid=j.id;exp=j.exp;$('inv').value=j.pr;$('top').textContent='$'+Number(j.usd).toFixed(2);$('sats').textContent=j.sats.toLocaleString()+' sats at 1 BTC = $'+Math.round(j.price).toLocaleString();
+cur=j.pr;iid=j.id;exp=j.exp;$('inv').value=j.pr;$('top').textContent='$'+Number(j.usd).toFixed(2);$('sats').textContent='';
 var q=$('qr');q.innerHTML='';if(window.QRCode)new QRCode(q,{text:'LIGHTNING:'+j.pr.toUpperCase(),width:168,height:168,correctLevel:QRCode.CorrectLevel.M});
 $('pay').hidden=false;$('stt').textContent='Waiting for your payment...';show('st');tset(0);tick();stop();tm=setInterval(tick,1000);pt=setInterval(poll,3000)
 }).catch(function(e){er.textContent=e.message||'Something went wrong.';er.hidden=false}).then(function(){b.disabled=false;draw()})};
@@ -243,7 +243,7 @@ function payPage(slug, link, req, feePct) {
     tut +
     inv2 +
     '<section id="s3" class="panel c" hidden><div class="ico" style="font-size:2.2rem">&#10003;</div><h1 style="color:var(--ac)">Payment complete</h1><p class="mu" id="amt"></p><button class="sec" id="again2" type="button">Make another payment</button></section>' +
-    tail('<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script><script>var SLUG=' + JSON.stringify(slug) + ",FEEPCT=" + JSON.stringify(feePct) + ";" + PAYJS + "</script>");
+    tail('<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script><script>var SLUG=' + JSON.stringify(slug) + ";" + PAYJS + "</script>");
 }
 
 const ADMINJS = String.raw`var COLORS=${JSON.stringify(COLORS)},sel=0,D=null,tab='ov',sp={},ready=false,statF='';
@@ -508,7 +508,7 @@ module.exports = async (req, res) => {
       const rec = { id, slug: String(b.slug), name: l.name, owner: l.owner || "admin", usd, pay: payUsd, feePct, sats, pr: i.pr, verify: i.verify || "", t, exp: t + 30 * 60 * 1000, st: "pending" };
       await db(["HSET", "inv", id, JSON.stringify(rec)]);
       await db(["LPUSH", "ilog", id]); await db(["LTRIM", "ilog", 0, 499]);
-      return json(200, { id, pr: i.pr, sats, price, exp: rec.exp, usd: payUsd });
+      return json(200, { id, pr: i.pr, exp: rec.exp, usd });
     }
     // ---- public: auto payment check (used by the pay page every 3s) ----
     if (path === "/api/check") {
@@ -516,7 +516,7 @@ module.exports = async (req, res) => {
       if (!v) return json(404, { error: "Not found" });
       const r = JSON.parse(v);
       if (r.st === "pending") await checkOne(r);
-      return json(200, { st: r.st, usd: r.pay != null ? r.pay : r.usd });
+      return json(200, { st: r.st, usd: r.usd });
     }
     // ---- logged-in area ----
     const w = who(req);
